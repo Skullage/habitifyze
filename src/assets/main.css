@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-inter: "Inter", "sans-serif";
+  --color-bg-light: #F7F7F7;
+  --color-accent-light: #6CB2EB;
+  --color-bg-dark: #1E1E1E;
+  --color-text-dark: #FFFFFF;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-bold;
+}
+
+body {
+  @apply font-inter bg-bg-light dark:bg-bg-dark dark:text-text-dark py-8;
+  overflow-x: hidden;
+}
+
+#app {
+  height: 100vh;
+  width: 100vw;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
