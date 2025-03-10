@@ -16,6 +16,7 @@ const menu = <menuLink[]>[
   { title: 'Статистика', link: '/stats', icon: 'material-symbols:query-stats-rounded' },
   { title: 'Настройки', link: '/settings', icon: 'material-symbols:settings' },
 ]
+
 onMounted(() => {
   historyStore.loadFromStorage()
 })

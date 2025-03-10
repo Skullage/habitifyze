@@ -16,11 +16,16 @@ const historyStore = useHistoryStore()
         <div>
           <h2>История:</h2>
           <ul>
-            <li v-for="(item, index) in Object.entries(historyStore.history)" :key="index">
-              {{
-                `${item[0]} - ${item[1][0].name} - Выполнено ${item[1][0].completed}/${item[1][0].goal}`
-              }}
-            </li>
+            <template v-for="(objects, date) in historyStore.history" :key="date">
+              <li v-for="(obj, index) in objects" :key="index">
+                <p v-if="obj.goal">
+                  {{ `${date} - ${obj.name} - Выполнено ${obj.sum}/${obj.goal}` }}
+                </p>
+                <p v-else>
+                  {{ `${date} - ${obj.name} - ${obj.completed ? 'Выполнено' : 'Не выполнено'}` }}
+                </p>
+              </li>
+            </template>
           </ul>
         </div>
       </div>

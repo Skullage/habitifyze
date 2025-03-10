@@ -18,7 +18,7 @@ import {
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
 // Интерфейсы для типизации данных
-interface DataSet {
+export interface DataSet {
   label: string
   data: number[]
   backgroundColor?: string

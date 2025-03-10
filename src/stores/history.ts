@@ -1,11 +1,13 @@
 import { reactive } from 'vue'
 import { defineStore } from 'pinia'
+import type { DataSet } from '@/components/Chart/BarChart.vue'
 
 interface HabitHistory {
   [date: string]: {
     name: string
+    completed: boolean
+    value: number | boolean
     goal?: number
-    completed: number | boolean
     sum?: number
     backgroundColor?: string
     borderColor?: string
@@ -13,13 +15,6 @@ interface HabitHistory {
   }[]
 }
 
-interface DataSet {
-  label: string
-  data: number[]
-  backgroundColor?: string
-  borderColor?: string
-  borderWidth?: number
-}
 export const useHistoryStore = defineStore('history', () => {
   const history = reactive<HabitHistory>({})
 
@@ -34,20 +29,21 @@ export const useHistoryStore = defineStore('history', () => {
   const getDates = (): string[] => {
     return Object.keys(history)
   }
+
   const getDataset = (): DataSet[] => {
     const groupedData = Object.values(history)
       .flatMap((entries) => entries) // Преобразуем объект в массив записей
-      .filter((el) => typeof el.completed === 'number') // Фильтруем только числовые значения
+      .filter((el) => el.goal) // Фильтруем только числовые значения
       .reduce(
         (acc, item) => {
           // Если label уже существует в аккумуляторе, добавляем completed в массив data
           if (acc[item.name]) {
-            acc[item.name].data.push(item.completed as number)
+            acc[item.name].data.push(item.sum as number)
           } else {
             // Если label не существует, создаем новую запись
             acc[item.name] = {
               label: item.name,
-              data: [item.completed as number],
+              data: [item.sum as number],
               backgroundColor: item.backgroundColor, // Уникальный цвет для каждого label
               borderColor: item.borderColor, // Уникальный цвет для границы
               borderWidth: 1,
@@ -57,7 +53,6 @@ export const useHistoryStore = defineStore('history', () => {
         },
         {} as Record<string, DataSet>,
       )
-
     // Преобразуем объект groupedData в массив
     return Object.values(groupedData)
   }
@@ -84,15 +79,35 @@ export const useHistoryStore = defineStore('history', () => {
       ? history[historyData.date].find((el) => el.name === historyData.title)
       : null
     if (array) {
-      array.completed = value
+      if (typeof value === 'boolean' && !value) {
+        const index = history[historyData.date].findIndex((el) => el.name === historyData.title)
+        if (index !== -1) {
+          // Удаляем элемент из массива
+          history[historyData.date].splice(index, 1)
+
+          // Если массив пуст, удаляем объект с этой датой
+          if (history[historyData.date].length === 0) {
+            delete history[historyData.date]
+          }
+        }
+      } else {
+        array.value = value
+        array.sum = sum
+        array.completed =
+          (typeof value === 'boolean' && value) ||
+          (typeof value === 'number' && (sum as number) >= (array.goal as number))
+      }
     } else {
       if (!history[historyData.date]) history[historyData.date] = []
       const color = getRandomColor()
       history[historyData.date].push({
         name: historyData.title,
         goal: historyData.goal ? historyData.goal : undefined,
-        completed: value,
-        sum: sum,
+        completed:
+          (typeof value === 'boolean' && value) ||
+          (typeof value === 'number' && (sum as number) >= (historyData.goal as number)),
+        value: value,
+        sum: sum ? sum : undefined,
         backgroundColor: color,
         borderColor: color,
         borderWidth: 1,
