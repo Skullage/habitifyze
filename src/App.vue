@@ -18,7 +18,7 @@ const menu = <menuLink[]>[
 ]
 
 onMounted(() => {
-  historyStore.loadFromStorage()
+  historyStore.loadHistory()
 })
 </script>
 <template>

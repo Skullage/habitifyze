@@ -1,38 +1,42 @@
 import { reactive } from 'vue'
 import { defineStore } from 'pinia'
 import type { DataSet } from '@/components/Chart/BarChart.vue'
+import { getRandomColor } from '@/utils/color'
+import { saveToStorage, loadFromStorage } from '@/utils/storage'
+
+interface HabitEntry {
+  name: string
+  completed: boolean
+  value: number | boolean
+  goal?: number
+  sum?: number
+  backgroundColor?: string
+  borderColor?: string
+  borderWidth?: number
+}
 
 interface HabitHistory {
-  [date: string]: {
-    name: string
-    completed: boolean
-    value: number | boolean
-    goal?: number
-    sum?: number
-    backgroundColor?: string
-    borderColor?: string
-    borderWidth?: number
-  }[]
+  [date: string]: HabitEntry[]
+}
+
+interface UpdateValueParams {
+  title: string
+  goal?: number
+  date: string
 }
 
 export const useHistoryStore = defineStore('history', () => {
   const history = reactive<HabitHistory>({})
 
-  const getRandomColor = () => {
-    const letters = '0123456789ABCDEF'
-    let color = '#'
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)]
-    }
-    return color
-  }
+  // Получение всех дат
   const getDates = (): string[] => {
     return Object.keys(history)
   }
 
+  // Получение данных для Chart.js
   const getDataset = (): DataSet[] => {
     const groupedData = Object.values(history)
-      .flatMap((entries) => entries) // Преобразуем объект в массив записей
+      .flat() // Преобразуем объект в массив записей
       .filter((el) => el.goal) // Фильтруем только числовые значения
       .reduce(
         (acc, item) => {
@@ -56,18 +60,11 @@ export const useHistoryStore = defineStore('history', () => {
     // Преобразуем объект groupedData в массив
     return Object.values(groupedData)
   }
-  const saveToStorage = () => {
-    localStorage.setItem('history', JSON.stringify(history))
-  }
-  const loadFromStorage = () => {
-    const storedHistory = localStorage.getItem('history')
+
+  const loadHistory = () => {
+    const storedHistory = loadFromStorage<History[]>('history')
     if (storedHistory) {
-      try {
-        const parsedHistory = JSON.parse(storedHistory)
-        Object.assign(history, parsedHistory) // Восстанавливаем состояние history
-      } catch (error) {
-        console.error('Ошибка при загрузке данных из localStorage:', error)
-      }
+      Object.assign(history, storedHistory)
     }
   }
   const updateValue = (
@@ -75,46 +72,63 @@ export const useHistoryStore = defineStore('history', () => {
     historyData: { title: string; goal?: number; date: string },
     sum?: number,
   ) => {
-    const array = history[historyData.date]
-      ? history[historyData.date].find((el) => el.name === historyData.title)
-      : null
-    if (array) {
+    const { date, title, goal } = historyData
+    const entries = history[date] || []
+    const existingEntry = entries.find((el) => el.name === title)
+    if (existingEntry) {
+      handleExistingEntry(existingEntry, value, sum)
       if (typeof value === 'boolean' && !value) {
-        const index = history[historyData.date].findIndex((el) => el.name === historyData.title)
-        if (index !== -1) {
-          // Удаляем элемент из массива
-          history[historyData.date].splice(index, 1)
-
-          // Если массив пуст, удаляем объект с этой датой
-          if (history[historyData.date].length === 0) {
-            delete history[historyData.date]
-          }
-        }
-      } else {
-        array.value = value
-        array.sum = sum
-        array.completed =
-          (typeof value === 'boolean' && value) ||
-          (typeof value === 'number' && (sum as number) >= (array.goal as number))
+        removeEntry(date, title)
       }
     } else {
-      if (!history[historyData.date]) history[historyData.date] = []
-      const color = getRandomColor()
-      history[historyData.date].push({
-        name: historyData.title,
-        goal: historyData.goal ? historyData.goal : undefined,
-        completed:
-          (typeof value === 'boolean' && value) ||
-          (typeof value === 'number' && (sum as number) >= (historyData.goal as number)),
-        value: value,
-        sum: sum ? sum : undefined,
-        backgroundColor: color,
-        borderColor: color,
-        borderWidth: 1,
-      })
+      addNewEntry(date, title, value, goal, sum)
     }
-    saveToStorage()
+    saveToStorage('history', history)
   }
 
-  return { history, updateValue, getDates, getDataset, loadFromStorage }
+  const handleExistingEntry = (entry: HabitEntry, value: number | boolean, sum?: number) => {
+    entry.value = value
+    entry.sum = sum
+    entry.completed =
+      (typeof value === 'boolean' && value) ||
+      (typeof value === 'number' && (sum as number) >= (entry.goal as number))
+  }
+
+  const removeEntry = (date: string, title: string) => {
+    const entries = history[date]
+    const index = entries.findIndex((el) => el.name === title)
+    if (index !== -1) {
+      entries.splice(index, 1)
+      if (entries.length === 0) {
+        delete history[date]
+      }
+    }
+  }
+
+  const addNewEntry = (
+    date: string,
+    title: string,
+    value: number | boolean,
+    goal?: number,
+    sum?: number,
+  ) => {
+    const color = getRandomColor()
+    const newEntry: HabitEntry = {
+      name: title,
+      goal,
+      completed:
+        (typeof value === 'boolean' && value) ||
+        (typeof value === 'number' && (sum as number) >= (goal as number)),
+      value,
+      sum,
+      backgroundColor: color,
+      borderColor: color,
+      borderWidth: 1,
+    }
+
+    if (!history[date]) history[date] = []
+    history[date].push(newEntry)
+  }
+
+  return { history, updateValue, getDates, getDataset, loadHistory }
 })

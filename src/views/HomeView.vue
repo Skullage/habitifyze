@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import HabitCard from '@/components/HabitCard.vue'
 import ToggleSwitch from '@/components/ToggleSwitch.vue'
 import { useHistoryStore } from '@/stores/history.ts'
 
+import { saveToStorage, loadFromStorage } from '@/utils/storage'
+import { getRandomHabitExample } from '@/utils/examples'
+
 interface Habit {
   title: string
-  done: boolean[] | number[] | null[]
+  done: boolean[] | number[]
   target: number
   unit: string
   isBooleanType: boolean
@@ -33,32 +36,6 @@ const historyStore = useHistoryStore()
 
 const habits = reactive<Habit[]>([])
 
-const getRandomInt = (max: number): number => {
-  return Math.floor(Math.random() * max)
-}
-
-const habitExample: string[] = [
-  'Пить 2 литра воды',
-  'Читать 30 минут',
-  'Заниматься спортом 5 дней',
-  'Сделать 10 000 шагов',
-  'Съесть 5 порций овощей/фруктов',
-  'Изучать английский язык 15 минут',
-]
-
-const saveToStorage = () => {
-  localStorage.setItem('habits', JSON.stringify(habits))
-}
-
-const loadFromStorage = () => {
-  const storedHabits = localStorage.getItem('habits')
-  if (storedHabits) {
-    habits.splice(0, habits.length, ...JSON.parse(storedHabits))
-  } else {
-    habits.splice(0, habits.length) // Очищаем массив, если в хранилище ничего нет
-  }
-}
-
 const addHabit = () => {
   if (!habit.value.trim()) return (validate.value.habit = 'Введите привычку')
   if (!isBooleanType.value) {
@@ -71,42 +48,36 @@ const addHabit = () => {
       return
     }
   }
-  if (isBooleanType.value) {
-    habits.push({
-      title: habit.value,
-      done: [false, false, false, false, false, false, false],
-      target: 7,
-      unit: 'дней',
-      isBooleanType: true,
-    })
-  } else {
-    habits.push({
-      title: habit.value,
-      done: [null, null, null, null, null, null, null],
-      target: Number(target.value),
-      unit: unit.value,
-      isBooleanType: false,
-    })
+  const newHabit: Habit = {
+    title: habit.value,
+    done: isBooleanType.value ? Array(7).fill(false) : Array(7).fill(0),
+    target: isBooleanType.value ? 7 : Number(target.value),
+    unit: isBooleanType.value ? 'дней' : unit.value,
+    isBooleanType: isBooleanType.value,
   }
+  if (isBooleanType.value) {
+    habits.push(newHabit)
+  }
+  resetForm()
+  saveToStorage('habits', habits)
+}
 
+const resetForm = () => {
   habit.value = ''
   target.value = null
   unit.value = ''
-  validate.value.habit = null
-  validate.value.target = null
-  validate.value.unit = null
-  saveToStorage()
+  validate.value = { habit: null, target: null, unit: null }
 }
 
 const deleteHabit = (index: number) => {
   habits.splice(index, 1)
-  saveToStorage()
+  saveToStorage('habits', habits)
 }
 
 const checkDay = (index: number, day: number, historyData: { title: string; date: string }) => {
   habits[index].done[day] = !habits[index].done[day]
   historyStore.updateValue(habits[index].done[day], historyData)
-  saveToStorage()
+  saveToStorage('habits', habits)
 }
 
 const writeDayValue = (
@@ -117,18 +88,23 @@ const writeDayValue = (
 ) => {
   if (!isNaN(value)) {
     habits[index].done[day] = value
-    const sum = (habits[index].done as number[]).reduce((prev, current) => (prev += current))
+    const sum = (habits[index].done as number[]).reduce((acc, current) => (acc += current), 0)
     historyStore.updateValue(value, historyData, sum)
-    saveToStorage()
+    saveToStorage('habits', habits)
   }
 }
 
-const getRandomHabitExample = computed((): string => {
-  return habitExample[getRandomInt(habitExample.length - 1)]
-})
+const loadHabits = () => {
+  const storedHabits = loadFromStorage<Habit[]>('habits')
+  if (storedHabits) {
+    habits.splice(0, habits.length, ...storedHabits)
+  } else {
+    habits.splice(0, habits.length)
+  }
+}
 
 onMounted(() => {
-  loadFromStorage()
+  loadHabits()
 })
 </script>
 
@@ -148,11 +124,10 @@ onMounted(() => {
         <Transition name="fade" mode="out-in">
           <form
             class="flex flex-col mb-8 shadow-lg p-8"
-            key="boolean-form"
             @submit.prevent="addHabit"
-            v-if="isBooleanType"
+            :key="isBooleanType ? 'boolean-form' : 'measurable-form'"
           >
-            <label class="flex flex-col mb-4">
+            <label class="flex flex-col mb-1">
               Введите привычку
               <input
                 type="text"
@@ -167,67 +142,40 @@ onMounted(() => {
                 >{{ validate.habit }}</span
               >
             </label>
-            <button
-              type="submit"
-              class="rounded-lg py-2 cursor-pointer bg-green-500 hover:scale-[103%] duration-300"
-            >
-              Добавить
-            </button>
-          </form>
-          <form
-            class="flex flex-col mb-8 shadow-lg p-8"
-            @submit.prevent="addHabit"
-            key="measurable-form"
-            v-else
-          >
-            <label class="flex flex-col mb-4">
-              Введите привычку
-              <input
-                type="text"
-                class="w-full border-b outline-none"
-                :class="{ error: validate.habit }"
-                :placeholder="getRandomHabitExample"
-                v-model="habit"
-              />
-              <span
-                class="text-sm h-4"
-                :style="{ visibility: validate.habit ? 'visible' : 'hidden' }"
-                >{{ validate.habit }}</span
-              >
-            </label>
-            <div class="flex gap-4">
-              <label class="flex flex-col mb-4 flex-1">
-                Цель
-                <input
-                  type="text"
-                  class="w-full border-b outline-none"
-                  :class="{ error: validate.target }"
-                  placeholder="15"
-                  v-model="target"
-                />
-                <span
-                  class="text-sm h-4"
-                  :style="{ visibility: validate.target ? 'visible' : 'hidden' }"
-                  >{{ validate.target }}</span
-                >
-              </label>
-              <label class="flex flex-col mb-4 w-[8ch]">
-                Ед. изм.
-                <input
-                  type="text"
-                  class="w-full border-b outline-none"
-                  :class="{ error: validate.unit }"
-                  placeholder="км"
-                  v-model="unit"
-                />
-                <span
-                  class="text-sm h-4"
-                  :style="{ visibility: validate.unit ? 'visible' : 'hidden' }"
-                  >{{ validate.unit }}</span
-                >
-              </label>
-            </div>
-
+            <template v-if="!isBooleanType">
+              <div class="flex gap-4">
+                <label class="flex flex-col mb-4 flex-1">
+                  Цель
+                  <input
+                    type="text"
+                    class="w-full border-b outline-none"
+                    :class="{ error: validate.target }"
+                    placeholder="15"
+                    v-model="target"
+                  />
+                  <span
+                    class="text-sm h-4"
+                    :style="{ visibility: validate.target ? 'visible' : 'hidden' }"
+                    >{{ validate.target }}</span
+                  >
+                </label>
+                <label class="flex flex-col mb-4 w-[8ch]">
+                  Ед. изм.
+                  <input
+                    type="text"
+                    class="w-full border-b outline-none"
+                    :class="{ error: validate.unit }"
+                    placeholder="км"
+                    v-model="unit"
+                  />
+                  <span
+                    class="text-sm h-4"
+                    :style="{ visibility: validate.unit ? 'visible' : 'hidden' }"
+                    >{{ validate.unit }}</span
+                  >
+                </label>
+              </div>
+            </template>
             <button
               type="submit"
               class="rounded-lg py-2 cursor-pointer bg-green-500 hover:scale-[103%] duration-300"

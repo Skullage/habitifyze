@@ -2,9 +2,10 @@
 import { ref, onMounted } from 'vue'
 
 import { useNotificationsStore } from '@/stores/notifications'
+import { saveToStorage, loadFromStorage } from '@/utils/storage'
 
 const notificationStore = useNotificationsStore()
-const notificationsTime = ref('00:00')
+const notificationsTime = ref<string>('00:00')
 
 const requestPermission = () => {
   notificationStore.requestPermission()
@@ -15,12 +16,13 @@ const reset = () => {
   localStorage.removeItem('history')
 }
 
-const saveToStorage = () => {
+const changeNotificationsTime = () => {
   addReminders()
-  localStorage.setItem('notificationsTime', notificationsTime.value)
+  saveToStorage('notificationsTime', notificationsTime.value)
 }
 
 const addReminders = () => {
+  notificationStore.stopReminderChecker()
   notificationStore.addReminder({
     title: 'HabitTracker',
     body: 'Не забудьте выполнить свои привычки',
@@ -29,9 +31,14 @@ const addReminders = () => {
 }
 
 onMounted(() => {
-  const notificationsTimeValue = localStorage.getItem('notificationsTime')
-  if (notificationsTimeValue) {
-    notificationsTime.value = notificationsTimeValue
+  const storedTime = loadFromStorage<string>('notificationsTime')
+  if (storedTime) {
+    notificationsTime.value = storedTime
+    notificationStore.addReminder({
+      title: 'HabitTracker',
+      body: 'Не забудьте выполнить свои привычки',
+      time: notificationsTime.value,
+    })
   }
 })
 </script>
@@ -49,7 +56,7 @@ onMounted(() => {
               type="time"
               class="border p-1 rounded cursor-pointer"
               v-model="notificationsTime"
-              @change="saveToStorage"
+              @change="changeNotificationsTime"
             />
           </div>
           <div class="flex gap-2 justify-center items-center">
