@@ -113,7 +113,7 @@ onMounted(() => {
     <div class="container">
       <div class="grid justify-center">
         <div class="pb-4 mb-8">
-          <h1 class="text-center text-3xl font-bold">HabitTracker</h1>
+          <h1 class="text-center text-3xl font-bold">Habitifyze</h1>
           <p class="text-md">Отслеживайте свои привычки и достигайте целей с легкостью!</p>
         </div>
         <div class="flex justify-between">
