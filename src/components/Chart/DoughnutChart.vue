@@ -1,10 +1,9 @@
 <template>
-  <Bar id="my-chart-id" :options="chartOptions" :data="chartData" />
+  <Doughnut id="my-chart-id" :options="chartOptions" :data="chartData" />
 </template>
 
 <script setup lang="ts">
-import { Bar } from 'vue-chartjs'
-import { computed } from 'vue'
+import { Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
   Title,
@@ -13,10 +12,11 @@ import {
   BarElement,
   CategoryScale,
   LinearScale,
+  ArcElement,
 } from 'chart.js'
 
 // Регистрация необходимых компонентов Chart.js
-ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
+ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement)
 
 // Интерфейсы для типизации данных
 export interface DataSet {
@@ -36,10 +36,10 @@ interface ChartData {
 const props = defineProps<ChartData>()
 
 // Данные для графика
-const chartData = computed(() => ({
+const chartData = {
   labels: props.labels,
   datasets: props.datasets,
-}))
+}
 
 // Настройки графика
 const chartOptions = {

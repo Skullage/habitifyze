@@ -1,6 +1,5 @@
 import { reactive } from 'vue'
 import { defineStore } from 'pinia'
-import type { DataSet } from '@/components/Chart/BarChart.vue'
 import { getRandomColor } from '@/utils/color'
 import { saveToStorage, loadFromStorage } from '@/utils/storage'
 
@@ -15,14 +14,16 @@ interface HabitEntry {
   borderWidth?: number
 }
 
-interface HabitHistory {
-  [date: string]: HabitEntry[]
+export interface DataSetPrerender {
+  label: string
+  data: { value: number; date: string }[]
+  backgroundColor?: string
+  borderColor?: string
+  borderWidth?: number
 }
 
-interface UpdateValueParams {
-  title: string
-  goal?: number
-  date: string
+interface HabitHistory {
+  [date: string]: HabitEntry[]
 }
 
 export const useHistoryStore = defineStore('history', () => {
@@ -33,21 +34,53 @@ export const useHistoryStore = defineStore('history', () => {
     return Object.keys(history)
   }
 
+  const getOrderedHistory = (): HabitHistory => {
+    const ordered = Object.keys(history)
+      .sort()
+      .reduce((obj: HabitHistory, key: string) => {
+        obj[key] = history[key]
+        return obj
+      }, {})
+    return ordered
+  }
+
+  const getPercentCompletedDataset = () => {
+    const color = getRandomColor()
+    const percent = 90
+    return [
+      {
+        data: [percent, 100 - percent],
+        backgroundColor: [color, 'gray'], // Уникальный цвет для каждого label
+        borderColor: [color, 'gray'], // Уникальный цвет для каждого label,
+      },
+    ]
+  }
+
   // Получение данных для Chart.js
-  const getDataset = (): DataSet[] => {
-    const groupedData = Object.values(history)
-      .flat() // Преобразуем объект в массив записей
+  const getDataset = (): DataSetPrerender[] => {
+    const groupedData = Object.entries(getOrderedHistory())
+      .flatMap(([date, items]) =>
+        items
+          .filter((item) => item.goal) // Фильтруем только числовые значения
+          .map((item) => ({
+            ...item,
+            date, // Добавляем дату из ключа объекта history
+          })),
+      )
       .filter((el) => el.goal) // Фильтруем только числовые значения
       .reduce(
         (acc, item) => {
           // Если label уже существует в аккумуляторе, добавляем completed в массив data
           if (acc[item.name]) {
-            acc[item.name].data.push(item.sum as number)
+            acc[item.name].data.push({
+              value: item.sum as number,
+              date: item.date.split('.').reverse().join('-'), // Используем дату из ключа
+            })
           } else {
             // Если label не существует, создаем новую запись
             acc[item.name] = {
               label: item.name,
-              data: [item.sum as number],
+              data: [{ value: item.sum as number, date: item.date.split('.').reverse().join('-') }],
               backgroundColor: item.backgroundColor, // Уникальный цвет для каждого label
               borderColor: item.borderColor, // Уникальный цвет для границы
               borderWidth: 1,
@@ -55,7 +88,7 @@ export const useHistoryStore = defineStore('history', () => {
           }
           return acc
         },
-        {} as Record<string, DataSet>,
+        {} as Record<string, DataSetPrerender>,
       )
     // Преобразуем объект groupedData в массив
     return Object.values(groupedData)
@@ -130,5 +163,13 @@ export const useHistoryStore = defineStore('history', () => {
     history[date].push(newEntry)
   }
 
-  return { history, updateValue, getDates, getDataset, loadHistory }
+  return {
+    history,
+    updateValue,
+    getDates,
+    getDataset,
+    loadHistory,
+    getOrderedHistory,
+    getPercentCompletedDataset,
+  }
 })
