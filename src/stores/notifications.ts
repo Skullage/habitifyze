@@ -40,7 +40,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const currentTime = getCurrentTime()
     const currentMinutes = timeToMinutes(currentTime)
 
-    reminders.forEach((reminder, index) => {
+    reminders.forEach((reminder) => {
       const reminderMinutes = timeToMinutes(reminder.time)
 
       // Если текущее время совпадает с временем напоминания
