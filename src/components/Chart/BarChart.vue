@@ -1,5 +1,10 @@
 <template>
-  <Bar id="my-chart-id" :options="chartOptions" :data="chartData" />
+  <Bar
+    v-if="chartData.datasets[0] && chartData.datasets[0].data.length > 0"
+    id="my-chart-id"
+    :options="chartOptions"
+    :data="chartData"
+  />
 </template>
 
 <script setup lang="ts">
@@ -14,23 +19,9 @@ import {
   CategoryScale,
   LinearScale,
 } from 'chart.js'
-
+import type { ChartData } from '@/types'
 // Регистрация необходимых компонентов Chart.js
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
-
-// Интерфейсы для типизации данных
-export interface DataSet {
-  label: string
-  data: number[]
-  backgroundColor?: string
-  borderColor?: string
-  borderWidth?: number
-}
-
-interface ChartData {
-  labels: string[]
-  datasets: DataSet[]
-}
 
 // Пропсы компонента
 const props = defineProps<ChartData>()

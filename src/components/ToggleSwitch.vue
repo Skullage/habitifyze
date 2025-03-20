@@ -1,15 +1,10 @@
 <script setup lang="ts">
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true,
-  },
-  label: {
-    type: String,
-    default: '',
-  },
+import type { ToggleSwitchProps, ToggleSwitchEmits } from '@/types'
+const props = withDefaults(defineProps<ToggleSwitchProps>(), {
+  label: '',
 })
-const emit = defineEmits(['update:modelValue'])
+
+const emit = defineEmits<ToggleSwitchEmits>()
 
 const toggle = () => {
   emit('update:modelValue', !props.modelValue)

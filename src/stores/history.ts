@@ -2,29 +2,7 @@ import { reactive } from 'vue'
 import { defineStore } from 'pinia'
 import { getRandomColor } from '@/utils/color'
 import { saveToStorage, loadFromStorage } from '@/utils/storage'
-
-interface HabitEntry {
-  name: string
-  completed: boolean
-  value: number | boolean
-  goal?: number
-  sum?: number
-  backgroundColor?: string
-  borderColor?: string
-  borderWidth?: number
-}
-
-export interface DataSetPrerender {
-  label: string
-  data: { value: number; date: string }[]
-  backgroundColor?: string
-  borderColor?: string
-  borderWidth?: number
-}
-
-interface HabitHistory {
-  [date: string]: HabitEntry[]
-}
+import type { HabitEntry, DataSetPrerender, HabitHistory, HistoryData } from '@/types'
 
 export const useHistoryStore = defineStore('history', () => {
   const history = reactive<HabitHistory>({})
@@ -34,24 +12,50 @@ export const useHistoryStore = defineStore('history', () => {
     return Object.keys(history)
   }
 
+  const resetHistory = (): void => {
+    Object.keys(history).forEach((key) => delete history[key])
+  }
+
   const getOrderedHistory = (): HabitHistory => {
     const ordered = Object.keys(history)
       .sort()
       .reduce((obj: HabitHistory, key: string) => {
-        obj[key] = history[key]
+        obj[key] = history[key] || []
         return obj
       }, {})
     return ordered
   }
 
   const getPercentCompletedDataset = () => {
-    const color = getRandomColor()
-    const percent = 90
+    const habits = localStorage.getItem('habits')
+    if (!habits)
+      return [
+        {
+          label: 'Прогресс',
+          data: [0, 100],
+          backgroundColor: ['green', 'gray'],
+          borderColor: ['green', 'gray'],
+        },
+      ]
+
+    const habitsArray = JSON.parse(habits)
+    let totalProgress = 0
+
+    habitsArray.forEach((habit: { done: number[]; target: number }) => {
+      const completed = habit.done.reduce((sum, value) => sum + value, 0)
+      const progress = Math.min(completed / habit.target, 1) // Ограничиваем прогресс 100%
+      totalProgress += progress
+    })
+
+    const percent =
+      habitsArray.length > 0 ? Math.round((totalProgress / habitsArray.length) * 100) : 0
+
     return [
       {
+        label: 'Прогресс',
         data: [percent, 100 - percent],
-        backgroundColor: [color, 'gray'], // Уникальный цвет для каждого label
-        borderColor: [color, 'gray'], // Уникальный цвет для каждого label,
+        backgroundColor: ['green', 'gray'],
+        borderColor: ['green', 'gray'],
       },
     ]
   }
@@ -61,28 +65,28 @@ export const useHistoryStore = defineStore('history', () => {
     const groupedData = Object.entries(getOrderedHistory())
       .flatMap(([date, items]) =>
         items
-          .filter((item) => item.goal) // Фильтруем только числовые значения
+          .filter((item): item is HabitEntry & { goal: number } => Boolean(item.goal))
           .map((item) => ({
             ...item,
-            date, // Добавляем дату из ключа объекта history
+            date,
           })),
       )
-      .filter((el) => el.goal) // Фильтруем только числовые значения
+      .filter((el) => typeof el.value === 'number') // Фильтруем только числовые значения
       .reduce(
         (acc, item) => {
-          // Если label уже существует в аккумуляторе, добавляем completed в массив data
           if (acc[item.name]) {
-            acc[item.name].data.push({
-              value: item.sum as number,
-              date: item.date.split('.').reverse().join('-'), // Используем дату из ключа
+            acc[item.name]!.data.push({
+              value: item.value as number,
+              date: item.date.split('.').reverse().join('-'),
             })
           } else {
-            // Если label не существует, создаем новую запись
             acc[item.name] = {
               label: item.name,
-              data: [{ value: item.sum as number, date: item.date.split('.').reverse().join('-') }],
-              backgroundColor: item.backgroundColor, // Уникальный цвет для каждого label
-              borderColor: item.borderColor, // Уникальный цвет для границы
+              data: [
+                { value: item.value as number, date: item.date.split('.').reverse().join('-') },
+              ],
+              backgroundColor: item.backgroundColor,
+              borderColor: item.borderColor,
               borderWidth: 1,
             }
           }
@@ -90,27 +94,23 @@ export const useHistoryStore = defineStore('history', () => {
         },
         {} as Record<string, DataSetPrerender>,
       )
-    // Преобразуем объект groupedData в массив
     return Object.values(groupedData)
   }
 
-  const loadHistory = () => {
-    const storedHistory = loadFromStorage<History[]>('history')
+  const loadHistory = (): void => {
+    const storedHistory = loadFromStorage<HabitHistory>('history')
     if (storedHistory) {
       Object.assign(history, storedHistory)
     }
   }
-  const updateValue = (
-    value: number | boolean,
-    historyData: { title: string; goal?: number; date: string },
-    sum?: number,
-  ) => {
+
+  const updateValue = (value: number | boolean, historyData: HistoryData, sum?: number): void => {
     const { date, title, goal } = historyData
     const entries = history[date] || []
     const existingEntry = entries.find((el) => el.name === title)
     if (existingEntry) {
       handleExistingEntry(existingEntry, value, sum)
-      if (typeof value === 'boolean' && !value) {
+      if ((typeof value === 'boolean' && !value) || (typeof value === 'number' && value <= 0)) {
         removeEntry(date, title)
       }
     } else {
@@ -119,7 +119,7 @@ export const useHistoryStore = defineStore('history', () => {
     saveToStorage('history', history)
   }
 
-  const handleExistingEntry = (entry: HabitEntry, value: number | boolean, sum?: number) => {
+  const handleExistingEntry = (entry: HabitEntry, value: number | boolean, sum?: number): void => {
     entry.value = value
     entry.sum = sum
     entry.completed =
@@ -127,8 +127,10 @@ export const useHistoryStore = defineStore('history', () => {
       (typeof value === 'number' && (sum as number) >= (entry.goal as number))
   }
 
-  const removeEntry = (date: string, title: string) => {
+  const removeEntry = (date: string, title: string): void => {
     const entries = history[date]
+    if (!entries) return
+
     const index = entries.findIndex((el) => el.name === title)
     if (index !== -1) {
       entries.splice(index, 1)
@@ -136,6 +138,7 @@ export const useHistoryStore = defineStore('history', () => {
         delete history[date]
       }
     }
+    saveToStorage('history', history)
   }
 
   const addNewEntry = (
@@ -144,7 +147,7 @@ export const useHistoryStore = defineStore('history', () => {
     value: number | boolean,
     goal?: number,
     sum?: number,
-  ) => {
+  ): void => {
     const color = getRandomColor()
     const newEntry: HabitEntry = {
       name: title,
@@ -171,5 +174,7 @@ export const useHistoryStore = defineStore('history', () => {
     loadHistory,
     getOrderedHistory,
     getPercentCompletedDataset,
+    resetHistory,
+    removeEntry,
   }
 })

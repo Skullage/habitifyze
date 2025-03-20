@@ -1,34 +1,22 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import { onMounted, ref } from 'vue'
-import { useHistoryStore } from '@/stores/history.ts'
-
-interface menuLink {
-  title: string
-  link: string
-  icon: string
-}
+import { useHistoryStore } from '@/stores/history'
+import { MENU_ITEMS } from '@/constants'
 
 const historyStore = useHistoryStore()
-
 const isMenuOpen = ref<boolean>(false)
 
 const toggleMenu = () => {
   isMenuOpen.value = !isMenuOpen.value
 }
 
-const menu = <menuLink[]>[
-  { title: 'Главная', link: '/', icon: 'material-symbols:house-rounded' },
-  { title: 'Статистика', link: '/stats', icon: 'material-symbols:query-stats-rounded' },
-  { title: 'Настройки', link: '/settings', icon: 'material-symbols:settings' },
-]
-
 onMounted(() => {
   historyStore.loadHistory()
 })
 </script>
 <template>
-  <div class="app-wrapper flex flex-col">
+  <div class="app-wrapper flex flex-col w-full min-h-screen overflow-x-hidden relative">
     <header class="bg-accent-light py-4 fixed top-0 left-0 w-full z-50">
       <div class="container flex items-center justify-between">
         <!-- Десктопное меню -->
@@ -36,7 +24,7 @@ onMounted(() => {
           <ul class="flex items-center justify-center gap-8 uppercase">
             <li
               class="flex gap-2 items-center hover:scale-105 duration-200"
-              v-for="(item, index) in menu"
+              v-for="(item, index) in MENU_ITEMS"
               :key="index"
             >
               <RouterLink :to="item.link" class="order-1">{{ item.title }}</RouterLink>
@@ -64,7 +52,7 @@ onMounted(() => {
             <ul class="flex flex-col justify-center items-center uppercase gap-8 h-full">
               <li
                 class="flex gap-2 items-center hover:scale-105 duration-200"
-                v-for="(item, index) in menu"
+                v-for="(item, index) in MENU_ITEMS"
                 :key="index"
                 @click="toggleMenu"
               >
@@ -80,13 +68,6 @@ onMounted(() => {
   </div>
 </template>
 <style>
-.app-wrapper {
-  width: 100%;
-  min-height: 100vh;
-  overflow-x: hidden;
-  position: relative;
-}
-
 .router-link-active,
 .router-link-active ~ .icon {
   color: white;
@@ -112,14 +93,5 @@ onMounted(() => {
 .slide-leave-from {
   transform: translateX(0);
   opacity: 1;
-}
-
-/* Стили для иконки бургера */
-button {
-  transition: transform 0.3s ease;
-}
-
-button:hover {
-  transform: scale(1.1);
 }
 </style>

@@ -1,43 +1,40 @@
 <script setup lang="ts">
-import BarChart, { type DataSet } from '@/components/Chart/BarChart.vue'
+import BarChart from '@/components/Chart/BarChart.vue'
 import DoughnutChart from '@/components/Chart/DoughnutChart.vue'
-import { useHistoryStore, type DataSetPrerender } from '@/stores/history.ts'
+import { useHistoryStore } from '@/stores/history.ts'
 import { ref, computed } from 'vue'
+import { useDateFormatter } from '@/composables/useDateFormatter'
+import { useDataFilter } from '@/composables/useDataFilter'
 
 const historyStore = useHistoryStore()
+const { formatDateToISO, getCurrentDate, formatDateToDisplay } = useDateFormatter()
 
-const getCurrentDate = computed((): string => {
-  return new Date().toISOString().split('T')[0]
+const getMinDate = computed(() => {
+  const dates = Object.keys(historyStore.history)
+  if (!dates.length) return '1970-01-01'
+
+  const sortedDates = dates.sort()
+  return formatDateToISO(sortedDates[0]!)
 })
 
-const minDate = ref<string>('1970-01-01')
+const minDate = ref<string>(getMinDate.value)
 const maxDate = ref<string>(getCurrentDate.value)
 
 const filteredDatasets = computed(() => {
-  return getFilteredValue(historyStore.getDataset())
+  const { filterDataByDateRange } = useDataFilter(minDate.value, maxDate.value)
+  return filterDataByDateRange(historyStore.getDataset())
 })
 
-const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
-  return value
-    .map((dataset) => ({
-      ...dataset,
-      data: dataset.data.filter((item) => {
-        const itemDate = new Date(item.date)
-        const minDateValue = new Date(minDate.value || '1970-01-01')
-        const maxDateValue = new Date(maxDate.value || getCurrentDate.value)
-        return itemDate >= minDateValue && itemDate <= maxDateValue
-      }),
-    }))
-    .map((el) => {
-      return {
-        label: el.label,
-        data: el.data.map((item) => item.value), // Преобразуем данные в массив чисел
-        backgroundColor: el.backgroundColor,
-        borderColor: el.borderColor,
-        borderWidth: el.borderWidth,
-      }
-    })
-}
+const chartLabels = computed(() => {
+  const datasets = historyStore.getDataset()
+  const allDates = datasets
+    .flatMap((dataset) => dataset.data.map((item) => item.date))
+    .filter((date, index, self) => self.indexOf(date) === index)
+    .filter((date) => date >= minDate.value && date <= maxDate.value)
+    .sort()
+    .map((date) => formatDateToDisplay(date))
+  return allDates
+})
 </script>
 <template>
   <main class="h-full">
@@ -46,7 +43,7 @@ const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
         <div class="pb-4 mb-8">
           <h1 class="text-center text-3xl font-bold">Ваш прогресс</h1>
         </div>
-        <div>
+        <div v-if="Object.keys(historyStore.history).length > 0">
           <fieldset class="text-center">
             <legend>Выберите период</legend>
             <label
@@ -61,7 +58,7 @@ const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
         </div>
         <div>
           <BarChart
-            :labels="historyStore.getDates()"
+            :labels="chartLabels"
             :datasets="filteredDatasets"
             :key="filteredDatasets.length"
           />
@@ -69,7 +66,7 @@ const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
         <div>
           <DoughnutChart
             class="block"
-            :labels="['Выполнено']"
+            :labels="['Выполнено', 'Не выполнено']"
             :datasets="historyStore.getPercentCompletedDataset()"
           />
         </div>
@@ -78,8 +75,8 @@ const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
           <ul>
             <template v-for="(objects, date) in historyStore.getOrderedHistory()" :key="date">
               <li v-for="(obj, index) in objects" :key="index">
-                <p v-if="obj.goal">
-                  {{ `${date} - ${obj.name} - Выполнено ${obj.sum}/${obj.goal}` }}
+                <p v-if="typeof obj.value !== 'boolean'">
+                  {{ `${date} - ${obj.name} - Выполнено ${obj.value}` }}
                 </p>
                 <p v-else>
                   {{ `${date} - ${obj.name} - ${obj.completed ? 'Выполнено' : 'Не выполнено'}` }}
@@ -88,7 +85,7 @@ const getFilteredValue = (value: DataSetPrerender[]): DataSet[] => {
             </template>
           </ul>
         </div>
-        <div v-else>Нет данных</div>
+        <div class="text-center" v-else>Нет данных</div>
       </div>
     </div>
   </main>

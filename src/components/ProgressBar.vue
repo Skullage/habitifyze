@@ -1,16 +1,11 @@
 <script setup lang="ts">
+import type { ProgressBarProps } from '@/types'
 import { computed } from 'vue'
 
-const props = defineProps({
-  maxValue: {
-    type: Number,
-    required: true,
-  },
-  value: {
-    type: Number,
-    default: 0,
-  },
+const props = withDefaults(defineProps<ProgressBarProps>(), {
+  value: 0,
 })
+
 const getProgressValue = computed((): number => {
   return Math.floor((props.value / props.maxValue) * 100)
 })

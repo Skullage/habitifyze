@@ -1,5 +1,12 @@
 <template>
-  <Doughnut id="my-chart-id" :options="chartOptions" :data="chartData" />
+  <Doughnut
+    v-if="
+      chartData.datasets[0] && chartData.datasets[0].data[0] && chartData.datasets[0].data[0] > 0
+    "
+    id="my-chart-id"
+    :options="chartOptions"
+    :data="chartData"
+  />
 </template>
 
 <script setup lang="ts">
@@ -14,23 +21,10 @@ import {
   LinearScale,
   ArcElement,
 } from 'chart.js'
+import type { ChartData } from '@/types'
 
 // Регистрация необходимых компонентов Chart.js
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale, ArcElement)
-
-// Интерфейсы для типизации данных
-export interface DataSet {
-  label: string
-  data: number[]
-  backgroundColor?: string
-  borderColor?: string
-  borderWidth?: number
-}
-
-interface ChartData {
-  labels: string[]
-  datasets: DataSet[]
-}
 
 // Пропсы компонента
 const props = defineProps<ChartData>()

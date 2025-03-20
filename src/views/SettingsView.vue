@@ -3,8 +3,10 @@ import { ref, onMounted } from 'vue'
 
 import { useNotificationsStore } from '@/stores/notifications'
 import { saveToStorage, loadFromStorage } from '@/utils/storage'
+import { useHistoryStore } from '@/stores/history'
 
 const notificationStore = useNotificationsStore()
+const historyStore = useHistoryStore()
 const notificationsTime = ref<string>('00:00')
 
 const requestPermission = () => {
@@ -14,6 +16,7 @@ const requestPermission = () => {
 const reset = () => {
   localStorage.removeItem('habits')
   localStorage.removeItem('history')
+  historyStore.resetHistory()
 }
 
 const changeNotificationsTime = () => {

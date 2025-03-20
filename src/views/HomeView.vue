@@ -3,23 +3,10 @@ import { onMounted, reactive, ref } from 'vue'
 import HabitCard from '@/components/HabitCard.vue'
 import ToggleSwitch from '@/components/ToggleSwitch.vue'
 import { useHistoryStore } from '@/stores/history.ts'
+import type { Habit, Validate } from '@/types'
 
 import { saveToStorage, loadFromStorage } from '@/utils/storage'
 import { getRandomHabitExample } from '@/utils/examples'
-
-interface Habit {
-  title: string
-  done: boolean[] | number[]
-  target: number
-  unit: string
-  isBooleanType: boolean
-}
-
-interface Validate {
-  habit: string | null
-  target: string | null
-  unit: string | null
-}
 
 const validate = ref<Validate>({
   habit: null,
@@ -36,7 +23,7 @@ const historyStore = useHistoryStore()
 
 const habits = reactive<Habit[]>([])
 
-const addHabit = () => {
+const addHabit = (): void | string => {
   if (!habit.value.trim()) return (validate.value.habit = 'Введите привычку')
   if (!isBooleanType.value) {
     if (!target.value || isNaN(target.value)) {
@@ -70,11 +57,19 @@ const resetForm = () => {
 }
 
 const deleteHabit = (index: number) => {
+  if (!habits[index]?.title) return
+  const habitTitle = habits[index].title
   habits.splice(index, 1)
   saveToStorage('habits', habits)
+
+  // Удаляем историю привычки
+  Object.keys(historyStore.history).forEach((date) => {
+    historyStore.removeEntry(date, habitTitle)
+  })
 }
 
 const checkDay = (index: number, day: number, historyData: { title: string; date: string }) => {
+  if (!habits[index]?.done) return
   habits[index].done[day] = !habits[index].done[day]
   historyStore.updateValue(habits[index].done[day], historyData)
   saveToStorage('habits', habits)
@@ -86,7 +81,7 @@ const writeDayValue = (
   day: number,
   historyData: { title: string; goal: number; date: string },
 ) => {
-  if (!isNaN(value)) {
+  if (!isNaN(value) && habits[index]?.done) {
     habits[index].done[day] = value
     const sum = (habits[index].done as number[]).reduce((acc, current) => (acc += current), 0)
     historyStore.updateValue(value, historyData, sum)
