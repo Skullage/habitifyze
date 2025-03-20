@@ -54,7 +54,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
   }
 
   const timeToMinutes = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number)
+    const [hours = 0, minutes = 0] = time.split(':').map(Number)
     return hours * 60 + minutes
   }
 
