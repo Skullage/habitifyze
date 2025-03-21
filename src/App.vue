@@ -64,7 +64,7 @@ onMounted(() => {
         </Transition>
       </div>
     </header>
-    <RouterView class="pt-16 flex-1" />
+    <RouterView class="pt-20 flex-1 pb-4" />
   </div>
 </template>
 <style>

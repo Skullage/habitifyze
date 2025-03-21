@@ -51,7 +51,7 @@ const chartLabels = computed(() => {
           <div class="bg-white rounded-lg shadow-md p-6">
             <fieldset class="text-center space-y-4">
               <legend class="text-lg font-semibold text-gray-700 mb-4">Выберите период</legend>
-              <div class="flex justify-center gap-4">
+              <div class="flex justify-center gap-4 flex-wrap">
                 <label class="flex flex-col items-center">
                   <span class="text-sm text-gray-600 mb-1">С</span>
                   <input
