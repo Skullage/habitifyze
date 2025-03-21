@@ -104,133 +104,158 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="h-full flex flex-col justify-center">
-    <div class="container">
-      <div class="grid justify-center">
+  <main class="h-full bg-gray-50">
+    <div class="container py-8">
+      <div class="max-w-4xl mx-auto">
         <div class="pb-4 mb-8">
-          <h1 class="text-center text-3xl font-bold">Habitifyze</h1>
-          <p class="text-md text-center">
+          <h1 class="text-center text-4xl font-bold text-gray-800 mb-2">Habitifyze</h1>
+          <p class="text-center text-gray-600">
             Отслеживайте свои привычки и достигайте целей с легкостью!
           </p>
         </div>
-        <div class="flex justify-between">
-          Измеримая
-          <ToggleSwitch v-model="isBooleanType" />
-          Да/Нет
-        </div>
-        <Transition name="fade" mode="out-in">
-          <form
-            class="flex flex-col mb-8 shadow-lg p-8"
-            @submit.prevent="addHabit"
-            :key="isBooleanType ? 'boolean-form' : 'measurable-form'"
-          >
-            <label class="flex flex-col mb-1">
-              Введите привычку
-              <input
-                type="text"
-                class="w-full border-b outline-none"
-                :class="{ error: validate.habit }"
-                :placeholder="getRandomHabitExample"
-                v-model="habit"
-              />
-              <span
-                class="text-sm h-4"
-                :style="{ visibility: validate.habit ? 'visible' : 'hidden' }"
-                >{{ validate.habit }}</span
+
+        <div class="space-y-8">
+          <!-- Форма добавления привычки -->
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-6">
+              <span class="text-gray-700">Измеримая</span>
+              <ToggleSwitch v-model="isBooleanType" />
+              <span class="text-gray-700">Да/Нет</span>
+            </div>
+
+            <Transition name="fade" mode="out-in">
+              <form
+                class="space-y-4"
+                @submit.prevent="addHabit"
+                :key="isBooleanType ? 'boolean-form' : 'measurable-form'"
               >
-            </label>
-            <template v-if="!isBooleanType">
-              <div class="flex gap-4">
-                <label class="flex flex-col mb-4 flex-1">
-                  Цель
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-700"> Введите привычку </label>
                   <input
                     type="text"
-                    class="w-full border-b outline-none"
-                    :class="{ error: validate.target }"
-                    placeholder="15"
-                    v-model="target"
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    :class="{ 'border-red-500': validate.habit }"
+                    :placeholder="getRandomHabitExample"
+                    v-model="habit"
                   />
-                  <span
-                    class="text-sm h-4"
-                    :style="{ visibility: validate.target ? 'visible' : 'hidden' }"
-                    >{{ validate.target }}</span
+                  <span v-if="validate.habit" class="text-sm text-red-500">{{
+                    validate.habit
+                  }}</span>
+                </div>
+
+                <template v-if="!isBooleanType">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-gray-700"> Цель </label>
+                      <input
+                        type="text"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        :class="{ 'border-red-500': validate.target }"
+                        placeholder="15"
+                        v-model="target"
+                      />
+                      <span v-if="validate.target" class="text-sm text-red-500">{{
+                        validate.target
+                      }}</span>
+                    </div>
+
+                    <div class="space-y-2">
+                      <label class="block text-sm font-medium text-gray-700"> Ед. изм. </label>
+                      <input
+                        type="text"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        :class="{ 'border-red-500': validate.unit }"
+                        placeholder="км"
+                        v-model="unit"
+                      />
+                      <span v-if="validate.unit" class="text-sm text-red-500">{{
+                        validate.unit
+                      }}</span>
+                    </div>
+                  </div>
+                </template>
+
+                <button
+                  type="submit"
+                  class="cursor-pointer w-full py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                </label>
-                <label class="flex flex-col mb-4 w-[8ch]">
-                  Ед. изм.
-                  <input
-                    type="text"
-                    class="w-full border-b outline-none"
-                    :class="{ error: validate.unit }"
-                    placeholder="км"
-                    v-model="unit"
-                  />
-                  <span
-                    class="text-sm h-4"
-                    :style="{ visibility: validate.unit ? 'visible' : 'hidden' }"
-                    >{{ validate.unit }}</span
-                  >
-                </label>
-              </div>
-            </template>
-            <button
-              type="submit"
-              class="rounded-lg py-2 cursor-pointer bg-green-500 hover:scale-[103%] duration-300"
-            >
-              Добавить
-            </button>
-          </form>
-        </Transition>
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  Добавить привычку
+                </button>
+              </form>
+            </Transition>
+          </div>
+
+          <!-- Список привычек -->
+          <transition-group
+            name="list"
+            tag="div"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            <habit-card
+              v-for="(item, index) in habits"
+              :title="item.title"
+              :value="item.done"
+              :target="item.target"
+              :unit="item.unit"
+              :isBooleanType="item.isBooleanType"
+              @input="writeDayValue(index, $event.value, $event.index, $event.historyData)"
+              :key="index"
+              @check="checkDay(index, $event.index, $event.historyData)"
+              @delete="deleteHabit(index)"
+            />
+          </transition-group>
+
+          <!-- Состояние "нет привычек" -->
+          <div v-if="habits.length === 0" class="text-center py-12">
+            <div class="bg-white rounded-lg shadow-md p-8">
+              <p class="text-xl text-gray-600">У вас пока нет привычек</p>
+              <p class="text-sm text-gray-500 mt-2">
+                Добавьте свою первую привычку, чтобы начать отслеживать прогресс
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <transition-group
-        name="list"
-        tag="div"
-        class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-      >
-        <habit-card
-          v-for="(item, index) in habits"
-          :title="item.title"
-          :value="item.done"
-          :target="item.target"
-          :unit="item.unit"
-          :isBooleanType="item.isBooleanType"
-          @input="writeDayValue(index, $event.value, $event.index, $event.historyData)"
-          :key="index"
-          @check="checkDay(index, $event.index, $event.historyData)"
-          @delete="deleteHabit(index)"
-        />
-      </transition-group>
     </div>
   </main>
 </template>
+
 <style scoped>
-.error {
-  border-color: red;
-}
-.error ~ span {
-  color: red;
-}
 .list-item {
   display: inline-block;
   margin-right: 10px;
 }
+
 .list-enter-active,
 .list-leave-active {
   transition: all 0.5s ease;
 }
+
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
   transform: translateY(30px);
 }
 
-/* Анимация для переключения форм */
 .fade-enter-active,
 .fade-leave-active {
   transition:
     opacity 0.3s ease,
     transform 0.3s ease;
 }
+
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
