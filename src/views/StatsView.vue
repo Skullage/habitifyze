@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import BarChart from '@/components/Chart/BarChart.vue'
-import DoughnutChart from '@/components/Chart/DoughnutChart.vue'
 import { useHistoryStore } from '@/stores/history.ts'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useDateFormatter } from '@/composables/useDateFormatter'
-import { useDataFilter } from '@/composables/useDataFilter'
+import type { HabitHistory } from '@/types'
+import { saveToStorage, loadFromStorage } from '@/utils/storage'
 
 const historyStore = useHistoryStore()
-const { formatDateToISO, getCurrentDate, formatDateToDisplay } = useDateFormatter()
+const { formatDateToISO, getCurrentDate } = useDateFormatter()
 
 const getMinDate = computed(() => {
   const dates = Object.keys(historyStore.history)
@@ -17,23 +16,38 @@ const getMinDate = computed(() => {
   return formatDateToISO(sortedDates[0]!)
 })
 
-const minDate = ref<string>(getMinDate.value)
-const maxDate = ref<string>(getCurrentDate.value)
+const minDate = ref<string>(loadFromStorage('statsMinDate') || getMinDate.value)
+const maxDate = ref<string>(loadFromStorage('statsMaxDate') || getCurrentDate.value)
 
-const filteredDatasets = computed(() => {
-  const { filterDataByDateRange } = useDataFilter(minDate.value, maxDate.value)
-  return filterDataByDateRange(historyStore.getDataset())
+// Следим за изменениями дат с задержкой
+let updateTimeout: number | null = null
+watch([minDate, maxDate], () => {
+  if (updateTimeout) {
+    clearTimeout(updateTimeout)
+  }
+  updateTimeout = setTimeout(() => {
+    // Сохраняем значения фильтра
+    saveToStorage('statsMinDate', minDate.value)
+    saveToStorage('statsMaxDate', maxDate.value)
+  }, 300)
 })
 
-const chartLabels = computed(() => {
-  const datasets = historyStore.getDataset()
-  const allDates = datasets
-    .flatMap((dataset) => dataset.data.map((item) => item.date))
-    .filter((date, index, self) => self.indexOf(date) === index)
-    .filter((date) => date >= minDate.value && date <= maxDate.value)
-    .sort()
-    .map((date) => formatDateToDisplay(date))
-  return allDates
+const filteredHistory = computed(() => {
+  const orderedHistory = historyStore.filteredHistoryByDate(minDate.value, maxDate.value)
+  const filtered: HabitHistory = {}
+
+  Object.entries(orderedHistory).forEach(([date, items]) => {
+    if (
+      items[0] &&
+      !(
+        (typeof items[0].value === 'boolean' && items[0].value === false) ||
+        (typeof items[0].value === 'number' && items[0].value <= 0)
+      )
+    ) {
+      filtered[date] = items
+    }
+  })
+  return filtered
 })
 </script>
 <template>
@@ -47,7 +61,7 @@ const chartLabels = computed(() => {
           </p>
         </div>
 
-        <div v-if="Object.keys(historyStore.history).length > 0" class="space-y-8">
+        <div v-if="Object.keys(filteredHistory).length > 0" class="space-y-8">
           <div class="bg-white rounded-lg shadow-md p-6">
             <fieldset class="text-center space-y-4">
               <legend class="text-lg font-semibold text-gray-700 mb-4">Выберите период</legend>
@@ -72,34 +86,10 @@ const chartLabels = computed(() => {
             </fieldset>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div class="bg-white rounded-lg shadow-md p-6">
-              <h2 class="text-xl font-semibold text-gray-800 mb-4">График активности</h2>
-              <div class="h-[400px]">
-                <BarChart
-                  :labels="chartLabels"
-                  :datasets="filteredDatasets"
-                  :key="filteredDatasets.length"
-                />
-              </div>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-md p-6">
-              <h2 class="text-xl font-semibold text-gray-800 mb-4">Общий прогресс</h2>
-              <div class="h-[400px]">
-                <DoughnutChart
-                  class="block"
-                  :labels="['Выполнено', 'Не выполнено']"
-                  :datasets="historyStore.getPercentCompletedDataset()"
-                />
-              </div>
-            </div>
-          </div>
-
           <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">История активности</h2>
             <ul class="space-y-2">
-              <template v-for="(objects, date) in historyStore.getOrderedHistory()" :key="date">
+              <template v-for="(objects, date) in filteredHistory" :key="date">
                 <li
                   v-for="(obj, index) in objects"
                   :key="index"

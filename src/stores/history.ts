@@ -7,11 +7,6 @@ import type { HabitEntry, DataSetPrerender, HabitHistory, HistoryData } from '@/
 export const useHistoryStore = defineStore('history', () => {
   const history = reactive<HabitHistory>({})
 
-  // Получение всех дат
-  const getDates = (): string[] => {
-    return Object.keys(history)
-  }
-
   const resetHistory = (): void => {
     Object.keys(history).forEach((key) => delete history[key])
   }
@@ -26,40 +21,6 @@ export const useHistoryStore = defineStore('history', () => {
     return ordered
   }
 
-  const getPercentCompletedDataset = () => {
-    const habits = localStorage.getItem('habits')
-    if (!habits)
-      return [
-        {
-          label: 'Прогресс',
-          data: [0, 100],
-          backgroundColor: ['green', 'gray'],
-          borderColor: ['green', 'gray'],
-        },
-      ]
-
-    const habitsArray = JSON.parse(habits)
-    let totalProgress = 0
-
-    habitsArray.forEach((habit: { done: number[]; target: number }) => {
-      const completed = habit.done.reduce((sum, value) => sum + value, 0)
-      const progress = Math.min(completed / habit.target, 1) // Ограничиваем прогресс 100%
-      totalProgress += progress
-    })
-
-    const percent =
-      habitsArray.length > 0 ? Math.round((totalProgress / habitsArray.length) * 100) : 0
-
-    return [
-      {
-        label: 'Прогресс',
-        data: [percent, 100 - percent],
-        backgroundColor: ['green', 'gray'],
-        borderColor: ['green', 'gray'],
-      },
-    ]
-  }
-
   // Получение данных для Chart.js
   const getDataset = (): DataSetPrerender[] => {
     const groupedData = Object.entries(getOrderedHistory())
@@ -71,7 +32,6 @@ export const useHistoryStore = defineStore('history', () => {
             date,
           })),
       )
-      .filter((el) => typeof el.value === 'number') // Фильтруем только числовые значения
       .reduce(
         (acc, item) => {
           if (acc[item.name]) {
@@ -110,9 +70,9 @@ export const useHistoryStore = defineStore('history', () => {
     const existingEntry = entries.find((el) => el.name === title)
     if (existingEntry) {
       handleExistingEntry(existingEntry, value, sum)
-      if ((typeof value === 'boolean' && !value) || (typeof value === 'number' && value <= 0)) {
-        removeEntry(date, title)
-      }
+      // if ((typeof value === 'boolean' && !value) || (typeof value === 'number' && value <= 0)) {
+      //   removeEntry(date, title)
+      // }
     } else {
       addNewEntry(date, title, value, goal, sum)
     }
@@ -166,15 +126,25 @@ export const useHistoryStore = defineStore('history', () => {
     history[date].push(newEntry)
   }
 
+  const filteredHistoryByDate = (minDate: string, maxDate: string) => {
+    const filtered: HabitHistory = {}
+
+    Object.entries(getOrderedHistory()).forEach(([date, items]) => {
+      const formattedDate = date.split('.').reverse().join('-')
+      if (formattedDate >= minDate && formattedDate <= maxDate) {
+        filtered[date] = items
+      }
+    })
+    return filtered
+  }
+
   return {
     history,
     updateValue,
-    getDates,
     getDataset,
     loadHistory,
-    getOrderedHistory,
-    getPercentCompletedDataset,
     resetHistory,
     removeEntry,
+    filteredHistoryByDate,
   }
 })

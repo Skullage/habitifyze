@@ -4,6 +4,7 @@ export interface Habit {
   target: number
   unit: string
   isBooleanType: boolean
+  weekId: string
 }
 
 export interface Validate {

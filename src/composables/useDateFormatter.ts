@@ -10,6 +10,13 @@ export const useDateFormatter = () => {
     return new Date().toISOString().split('T')[0] as string
   })
 
+  const getMonday = (d: Date): string => {
+    d = new Date(d)
+    var day = d.getDay(),
+      diff = d.getDate() - day + (day == 0 ? -6 : 1) // adjust when day is sunday
+    return new Date(d.setDate(diff)).toISOString().split('T')[0] as string
+  }
+
   const formatDateToDisplay = (date: string): string => {
     const [year, month, day] = date.split('-')
     return `${day}.${month}.${year}`
@@ -19,5 +26,6 @@ export const useDateFormatter = () => {
     formatDateToISO,
     getCurrentDate,
     formatDateToDisplay,
+    getMonday,
   }
 }

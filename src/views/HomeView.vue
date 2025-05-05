@@ -7,6 +7,9 @@ import type { Habit, Validate } from '@/types'
 
 import { saveToStorage, loadFromStorage } from '@/utils/storage'
 import { getRandomHabitExample } from '@/utils/examples'
+import { useDateFormatter } from '@/composables/useDateFormatter'
+
+const { getMonday } = useDateFormatter()
 
 const validate = ref<Validate>({
   habit: null,
@@ -25,6 +28,11 @@ const habits = reactive<Habit[]>([])
 
 const addHabit = (): void | string => {
   if (!habit.value.trim()) return (validate.value.habit = 'Введите привычку')
+
+  // Проверка на уникальность названия
+  const isDuplicate = habits.some((h) => h.title.toLowerCase() === habit.value.trim().toLowerCase())
+  if (isDuplicate) return (validate.value.habit = 'Привычка с таким названием уже существует')
+
   if (!isBooleanType.value) {
     if (!target.value || isNaN(target.value)) {
       validate.value.target = 'Введите корректное число'
@@ -41,6 +49,7 @@ const addHabit = (): void | string => {
     target: isBooleanType.value ? 7 : Number(target.value),
     unit: isBooleanType.value ? 'дней' : unit.value,
     isBooleanType: isBooleanType.value,
+    weekId: getMonday(new Date()),
   }
 
   habits.push(newHabit)
@@ -93,9 +102,29 @@ const loadHabits = () => {
   const storedHabits = loadFromStorage<Habit[]>('habits')
   if (storedHabits) {
     habits.splice(0, habits.length, ...storedHabits)
+    if (habits[0]?.weekId !== getMonday(new Date())) {
+      clearHabitsValue()
+    }
   } else {
     habits.splice(0, habits.length)
   }
+}
+
+const clearHabitsValue = () => {
+  habits.forEach((habit) => {
+    habit.done = habit.isBooleanType ? Array(7).fill(false) : Array(7).fill(0)
+    habit.weekId = getMonday(new Date())
+    // Обновляем историю для каждого дня недели
+    for (let day = 0; day < 7; day++) {
+      const date = new Date(habit.weekId)
+      date.setDate(date.getDate() + day)
+      historyStore.updateValue(habit.isBooleanType ? false : 0, {
+        title: habit.title,
+        date: date.toISOString().split('T')[0] as string,
+      })
+    }
+  })
+  saveToStorage('habits', habits)
 }
 
 onMounted(() => {
