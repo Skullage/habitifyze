@@ -38,12 +38,12 @@ watch(isVisible, (newValue) => {
       v-if="isVisible"
       class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg"
       :class="{
-        'bg-red-100 text-red-800': type === 'error',
-        'bg-green-100 text-green-800': type === 'success',
-        'bg-yellow-100 text-yellow-800': type === 'warning' || !type,
+        'bg-red-100 text-red-800': props.type === 'error',
+        'bg-green-100 text-green-800': props.type === 'success',
+        'bg-yellow-100 text-yellow-800': props.type === 'warning' || !props.type,
       }"
     >
-      {{ message }}
+      {{ props.message }}
     </div>
   </Transition>
 </template>
